@@ -36,4 +36,16 @@ Thumbs.db
 
 # Google Cloud credentials
 *credentials*.json
-*service-account*.json 
+*service-account*.json
+*client_secret*.json
+*token*.json
+*key*.json
+*.pem
+
+# Environment variables and secrets
+.secrets
+*.secret
+*secret*
+*password*
+*apikey*
+*api_key* 
