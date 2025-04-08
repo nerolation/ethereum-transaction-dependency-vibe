@@ -1,0 +1,16 @@
+{
+  "name": "vibe-dependency-app",
+  "version": "1.0.0",
+  "description": "Ethereum Transaction Dependency Graph Viewer",
+  "engines": {
+    "node": "18.x",
+    "npm": "9.x"
+  },
+  "scripts": {
+    "build": "cd vibe-dependency-app/frontend && npm install && npm run build",
+    "start": "cd vibe-dependency-app/backend && python app.py"
+  },
+  "cacheDirectories": [
+    "vibe-dependency-app/frontend/node_modules"
+  ]
+} 
