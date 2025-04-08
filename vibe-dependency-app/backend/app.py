@@ -43,19 +43,58 @@ elif 'GOOGLE_APPLICATION_CREDENTIALS_JSON' in os.environ:
     try:
         # Create a temporary file with the credentials
         creds_json = os.environ['GOOGLE_APPLICATION_CREDENTIALS_JSON']
-        with tempfile.NamedTemporaryFile(mode='w+', suffix='.json', delete=False) as temp:
-            temp.write(creds_json)
-            temp_filename = temp.name
+        
+        # Ensure we have valid JSON
+        try:
+            # Validate JSON format
+            # Heroku may add quotes around the JSON content or format it differently
+            creds_json = creds_json.strip()
+            # Remove outer quotes if present (Heroku sometimes adds these)
+            if (creds_json.startswith('"') and creds_json.endswith('"')) or \
+               (creds_json.startswith("'") and creds_json.endswith("'")):
+                creds_json = creds_json[1:-1]
+                
+            # Replace escaped quotes if needed
+            creds_json = creds_json.replace('\\"', '"').replace("\\'", "'")
+            
+            # Validate and format JSON
+            json_content = json.loads(creds_json)
+            # Format it nicely for the file
+            creds_json = json.dumps(json_content, indent=2)
+            print("Successfully parsed JSON credentials")
+        except json.JSONDecodeError as je:
+            print(f"Warning: Invalid JSON in GOOGLE_APPLICATION_CREDENTIALS_JSON: {je}")
+            print("Will try to use it as provided")
+        
+        # Write to temporary file
+        temp = tempfile.NamedTemporaryFile(mode='w+', suffix='.json', delete=False)
+        temp.write(creds_json)
+        temp.flush()
+        temp_filename = temp.name
+        temp.close()
+        
+        print(f"Wrote credentials to temporary file: {temp_filename}")
         
         # Set environment variable to point to the temp file
         os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = temp_filename
         
         # Initialize client
         storage_client = storage.Client()
+        print("Successfully initialized Google Cloud Storage client")
         DEMO_MODE = False
         
-        # Clean up temporary file
-        os.unlink(temp_filename)
+        # We'll clean up the temporary file when the app exits
+        # Don't delete immediately as the client might still need it
+        import atexit
+        def cleanup_temp_file():
+            try:
+                if os.path.exists(temp_filename):
+                    os.unlink(temp_filename)
+                    print(f"Cleaned up temporary credentials file: {temp_filename}")
+            except Exception as e:
+                print(f"Error cleaning up temporary file: {e}")
+        atexit.register(cleanup_temp_file)
+        
     except Exception as e:
         print(f"Error initializing Google Cloud Storage client from JSON: {e}")
         print("Running in demo mode with mock data...")
