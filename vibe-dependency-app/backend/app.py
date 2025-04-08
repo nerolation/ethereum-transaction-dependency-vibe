@@ -547,7 +547,20 @@ if __name__ == '__main__':
     if os.environ.get('PRODUCTION', '').lower() == 'true':
         print("Setting up static file serving for production...")
         # Setup static file serving in production
+        from static_server import setup_static_serving
+        print(f"Current directory: {os.getcwd()}")
+        print(f"Static folder would be: {os.path.abspath(os.path.join(os.path.dirname(__file__), '../frontend/build'))}")
+        
+        # Check if the build directory exists
+        build_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../frontend/build'))
+        if os.path.exists(build_dir):
+            print(f"Found frontend build directory at: {build_dir}")
+            print(f"Contents of build directory: {os.listdir(build_dir)}")
+        else:
+            print(f"ERROR: Frontend build directory not found at: {build_dir}")
+        
         app = setup_static_serving(app)
+        print("Static file serving setup complete")
     
     # Get port from environment variable for Heroku
     port = int(os.environ.get('PORT', 5000))
