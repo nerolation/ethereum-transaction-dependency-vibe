@@ -1,1 +1,1 @@
-web: cd backend && gunicorn app:app 
+web: bash ./build_frontend.sh && cd backend && PRODUCTION=true gunicorn app:app 

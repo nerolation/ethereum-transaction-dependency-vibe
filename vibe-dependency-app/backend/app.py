@@ -485,64 +485,68 @@ def get_status():
         "min_block_number": min_block
     })
 
-@app.route('/', methods=['GET'])
-def root():
-    """Serve a simple HTML page for the root route."""
-    html = """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Ethereum Transaction Dependency Graph Viewer API</title>
-        <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; margin: 0; padding: 20px; }
-            h1 { color: #333; }
-            .container { max-width: 800px; margin: 0 auto; }
-            .endpoint { background: #f4f4f4; padding: 10px; margin-bottom: 10px; border-radius: 5px; }
-            pre { background: #eee; padding: 10px; border-radius: 5px; overflow-x: auto; }
-            code { font-family: monospace; }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>Ethereum Transaction Dependency Graph Viewer API</h1>
-            <p>Welcome to the Ethereum Transaction Dependency Graph Viewer API. This service provides access to transaction dependency graphs for Ethereum blocks.</p>
-            
-            <h2>Available Endpoints:</h2>
-            
-            <div class="endpoint">
-                <h3>Status</h3>
-                <code>GET /api/status</code>
-                <p>Returns the current status of the API and whether it's running in demo mode.</p>
-                <a href="/api/status" target="_blank">Try it</a>
+# Only enable this route if we're not using static file serving (which would handle the root route)
+# This will be replaced by the frontend when we build and deploy it
+if os.environ.get('PRODUCTION', False) != 'true':
+    @app.route('/', methods=['GET'])
+    def root():
+        """Serve a simple HTML page for the root route."""
+        html = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Ethereum Transaction Dependency Graph Viewer API</title>
+            <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; margin: 0; padding: 20px; }
+                h1 { color: #333; }
+                .container { max-width: 800px; margin: 0 auto; }
+                .endpoint { background: #f4f4f4; padding: 10px; margin-bottom: 10px; border-radius: 5px; }
+                pre { background: #eee; padding: 10px; border-radius: 5px; overflow-x: auto; }
+                code { font-family: monospace; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>Ethereum Transaction Dependency Graph Viewer API</h1>
+                <p>Welcome to the Ethereum Transaction Dependency Graph Viewer API. This service provides access to transaction dependency graphs for Ethereum blocks.</p>
+                
+                <h2>Available Endpoints:</h2>
+                
+                <div class="endpoint">
+                    <h3>Status</h3>
+                    <code>GET /api/status</code>
+                    <p>Returns the current status of the API and whether it's running in demo mode.</p>
+                    <a href="/api/status" target="_blank">Try it</a>
+                </div>
+                
+                <div class="endpoint">
+                    <h3>Recent Graphs</h3>
+                    <code>GET /api/recent_graphs</code>
+                    <p>Returns the 9 most recent transaction dependency graphs.</p>
+                    <a href="/api/recent_graphs" target="_blank">Try it</a>
+                </div>
+                
+                <div class="endpoint">
+                    <h3>Specific Graph</h3>
+                    <code>GET /api/graph/{block_number}</code>
+                    <p>Returns a specific transaction dependency graph for the given block number.</p>
+                </div>
+                
+                <div class="endpoint">
+                    <h3>Gantt Chart</h3>
+                    <code>GET /api/gantt/{block_number}</code>
+                    <p>Returns a Gantt chart visualization for the given block number.</p>
+                </div>
             </div>
-            
-            <div class="endpoint">
-                <h3>Recent Graphs</h3>
-                <code>GET /api/recent_graphs</code>
-                <p>Returns the 9 most recent transaction dependency graphs.</p>
-                <a href="/api/recent_graphs" target="_blank">Try it</a>
-            </div>
-            
-            <div class="endpoint">
-                <h3>Specific Graph</h3>
-                <code>GET /api/graph/{block_number}</code>
-                <p>Returns a specific transaction dependency graph for the given block number.</p>
-            </div>
-            
-            <div class="endpoint">
-                <h3>Gantt Chart</h3>
-                <code>GET /api/gantt/{block_number}</code>
-                <p>Returns a Gantt chart visualization for the given block number.</p>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
-    return html
+        </body>
+        </html>
+        """
+        return html
 
 if __name__ == '__main__':
     # Check if we are in production environment (Heroku)
     if os.environ.get('PRODUCTION', False):
+        print("Setting up static file serving for production...")
         # Setup static file serving in production
         app = setup_static_serving(app)
     

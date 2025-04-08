@@ -1,16 +1,16 @@
 {
   "name": "vibe-dependency-app",
   "version": "1.0.0",
-  "description": "Ethereum Transaction Dependency Graphs",
+  "description": "Ethereum Transaction Dependency Graph Viewer",
   "scripts": {
     "start": "cd backend && python app.py",
-    "build": "bash build.sh",
+    "build": "cd frontend && npm install && npm run build",
     "heroku-postbuild": "bash build.sh",
     "test": "echo \"No tests specified\""
   },
   "engines": {
-    "node": "16.x",
-    "npm": "8.x"
+    "node": "18.x",
+    "npm": "9.x"
   },
   "cacheDirectories": [
     "frontend/node_modules"
