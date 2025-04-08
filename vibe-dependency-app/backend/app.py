@@ -13,6 +13,7 @@ CORS(app)
 CACHE_TIMEOUT = 300  # Cache timeout in seconds (5 minutes)
 graph_cache = {}  # Cache for graph data
 stats_cache = {}  # Cache for graph stats
+gantt_cache = {}  # Cache for gantt chart data
 recent_blocks_cache = {
     'data': None,
     'timestamp': 0
@@ -42,6 +43,7 @@ else:
 # GCS bucket and folder configuration
 BUCKET_NAME = "ethereum-graphs"
 IMAGES_FOLDER = "images"
+CHARTS_FOLDER = "chart_data"  # Folder for Gantt charts
 
 # Mock data for demo mode
 MOCK_BLOCKS = ["22216953", "22216952", "22216951", "22216950", "22216949", 
@@ -82,6 +84,41 @@ def get_image_from_gcs(block_number):
     }
     
     return img_str
+
+def get_gantt_from_gcs(block_number):
+    """Get a pre-rendered Gantt chart image from Google Cloud Storage."""
+    if DEMO_MODE:
+        # Return a mock image in demo mode
+        return MOCK_IMAGE
+    
+    # Check cache first
+    if block_number in gantt_cache and time.time() - gantt_cache[block_number]['timestamp'] < CACHE_TIMEOUT:
+        return gantt_cache[block_number]['image']
+        
+    bucket = storage_client.bucket(BUCKET_NAME)
+    blob = bucket.blob(f"chart_data_images/{block_number}.png")
+    
+    if not blob.exists():
+        return None
+    
+    try:
+        # Download as bytes
+        image_data = blob.download_as_bytes()
+        
+        # Encode to base64 for frontend display
+        img_str = base64.b64encode(image_data).decode('utf-8')
+        
+        # Cache the result
+        gantt_cache[block_number] = {
+            'image': img_str,
+            'timestamp': time.time()
+        }
+        
+        return img_str
+        
+    except Exception as e:
+        print(f"Error loading Gantt chart image for block {block_number}: {e}")
+        return None
 
 def get_recent_block_numbers():
     """Get the most recent block numbers from GCS."""
@@ -218,6 +255,33 @@ def get_graph(block_number):
         "edge_count": stats["edge_count"],
         "demo_mode": DEMO_MODE
     })
+
+@app.route('/api/gantt/<block_number>', methods=['GET'])
+def get_gantt(block_number):
+    """Get a Gantt chart for a given block number."""
+    try:
+        # Get chart image from GCS
+        image_data = get_gantt_from_gcs(block_number)
+        
+        if not image_data:
+            return jsonify({'error': f'Gantt chart not found for block {block_number}'}), 404
+        
+        # Get graph stats
+        stats = get_graph_stats(block_number)
+        
+        # Return image data and stats
+        response = {
+            'block_number': block_number,
+            'image': image_data,
+            'node_count': stats['node_count'],
+            'edge_count': stats['edge_count'],
+            'demo_mode': DEMO_MODE
+        }
+        
+        return jsonify(response)
+    except Exception as e:
+        print(f"Error in gantt API for block {block_number}: {e}")
+        return jsonify({'error': f'Error retrieving Gantt chart: {str(e)}'}), 500
 
 @app.route('/api/recent_graphs', methods=['GET'])
 def get_recent_graphs():

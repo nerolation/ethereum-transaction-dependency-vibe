@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import axios from 'axios';
 import GraphViewer from './components/GraphViewer';
+import GanttViewer from './components/GanttViewer';
 import GraphSearch from './components/GraphSearch';
 import RecentGraphs from './components/RecentGraphs';
+import ViewToggle, { ViewType } from './components/ViewToggle';
 import { GlobalStyle } from './styles/GlobalStyle';
 
 const AppContainer = styled.div`
@@ -84,6 +86,7 @@ function App() {
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [statusMessage, setStatusMessage] = useState('Checking connection...');
+  const [activeView, setActiveView] = useState<ViewType>('graph');
   const [backendStatus, setBackendStatus] = useState<{ connected: boolean; demoMode: boolean; message: string; minBlockNumber?: string }>({
     connected: false,
     demoMode: true,
@@ -125,6 +128,20 @@ function App() {
     setSelectedBlockNumber(null);
   };
 
+  const handleViewToggle = (view: ViewType) => {
+    setActiveView(view);
+  };
+
+  const renderViewer = () => {
+    if (!selectedBlockNumber) return null;
+
+    if (activeView === 'graph') {
+      return <GraphViewer blockNumber={selectedBlockNumber} onBack={handleBackToRecentGraphs} />;
+    } else {
+      return <GanttViewer blockNumber={selectedBlockNumber} onBack={handleBackToRecentGraphs} />;
+    }
+  };
+
   return (
     <>
       <GlobalStyle />
@@ -153,7 +170,10 @@ function App() {
           )}
           
           {selectedBlockNumber ? (
-            <GraphViewer blockNumber={selectedBlockNumber} onBack={handleBackToRecentGraphs} />
+            <>
+              <ViewToggle activeView={activeView} onViewChange={handleViewToggle} />
+              {renderViewer()}
+            </>
           ) : (
             <>
               <GraphSearch onSearch={handleGraphSelect} />
