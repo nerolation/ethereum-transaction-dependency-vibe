@@ -34,19 +34,6 @@ const GraphCard = styled.div`
   }
 `;
 
-const DemoTag = styled.div`
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  background-color: #f39c12;
-  color: white;
-  font-size: 0.7rem;
-  font-weight: 600;
-  padding: 0.2rem 0.4rem;
-  border-radius: 4px;
-  z-index: 2;
-`;
-
 const GraphImageContainer = styled.div`
   width: 100%;
   height: 220px;
@@ -111,16 +98,6 @@ const ErrorMessage = styled.div`
   font-size: 1.2rem;
 `;
 
-const DemoModeMessage = styled.div`
-  text-align: center;
-  padding: 1rem;
-  margin-top: 1rem;
-  color: #f39c12;
-  font-size: 1rem;
-  background-color: #fff8e1;
-  border-radius: 8px;
-`;
-
 interface RecentGraphsProps {
   onGraphSelect: (blockNumber: string) => void;
 }
@@ -137,7 +114,6 @@ const RecentGraphs: React.FC<RecentGraphsProps> = ({ onGraphSelect }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [graphs, setGraphs] = useState<GraphData[]>([]);
-  const [isDemoMode, setIsDemoMode] = useState(false);
 
   useEffect(() => {
     const fetchRecentGraphs = async () => {
@@ -147,11 +123,6 @@ const RecentGraphs: React.FC<RecentGraphsProps> = ({ onGraphSelect }) => {
       try {
         const response = await api.get('/recent_graphs');
         setGraphs(response.data);
-        
-        // Check if any of the graphs are in demo mode
-        if (response.data.length > 0 && response.data[0].demo_mode) {
-          setIsDemoMode(true);
-        }
       } catch (err) {
         setError('Failed to load recent graphs.');
         console.error('Error fetching recent graphs:', err);
@@ -197,16 +168,9 @@ const RecentGraphs: React.FC<RecentGraphsProps> = ({ onGraphSelect }) => {
     <Container>
       <SectionTitle>Recent Blocks</SectionTitle>
       
-      {isDemoMode && (
-        <DemoModeMessage>
-          ⚠️ Displaying mock data. Set GOOGLE_APPLICATION_CREDENTIALS to use real data.
-        </DemoModeMessage>
-      )}
-      
       <GraphGrid>
         {graphs.map((graph) => (
           <GraphCard key={graph.block_number} onClick={() => onGraphSelect(graph.block_number)}>
-            {graph.demo_mode && <DemoTag>DEMO</DemoTag>}
             <GraphImageContainer>
               <img 
                 src={`data:image/png;base64,${graph.image}`} 

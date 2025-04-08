@@ -195,7 +195,6 @@ const GraphViewer: React.FC<GraphViewerProps> = ({ blockNumber, onBack }) => {
       <GraphHeader>
         <GraphTitle>
           Block #{graphData.block_number}
-          {graphData.demo_mode && <DemoModeTag>Demo Mode</DemoModeTag>}
         </GraphTitle>
         <BackButton onClick={onBack}>
           ← Back to Recent Blocks
@@ -232,12 +231,6 @@ const GraphViewer: React.FC<GraphViewerProps> = ({ blockNumber, onBack }) => {
           alt={`Transaction Dependency Graph for Block ${graphData.block_number}`} 
         />
       </GraphImage>
-      
-      {graphData.demo_mode && (
-        <div style={{ textAlign: 'center', marginTop: '1rem', color: '#f39c12' }}>
-          ⚠️ Displaying mock data. Set GOOGLE_APPLICATION_CREDENTIALS to use real data.
-        </div>
-      )}
     </GraphContainer>
   );
 };

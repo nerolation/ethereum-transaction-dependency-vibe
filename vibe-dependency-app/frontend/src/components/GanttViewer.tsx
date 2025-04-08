@@ -192,11 +192,10 @@ const GanttViewer: React.FC<GanttViewerProps> = ({ blockNumber, onBack }) => {
     <GanttContainer>
       <GanttHeader>
         <GanttTitle>
-          Block #{ganttData?.block_number} - Gantt View
-          {ganttData?.demo_mode && <DemoModeTag>Demo Mode</DemoModeTag>}
+          Gantt Chart - Block #{ganttData?.block_number}
         </GanttTitle>
         <BackButton onClick={onBack}>
-          ← Back to Recent Blocks
+          &larr; Back to Recent Blocks
         </BackButton>
       </GanttHeader>
       
@@ -236,12 +235,6 @@ const GanttViewer: React.FC<GanttViewerProps> = ({ blockNumber, onBack }) => {
           renderGanttImage()
         )}
       </GanttChartContainer>
-      
-      {ganttData?.demo_mode && (
-        <div style={{ textAlign: 'center', marginTop: '1rem', color: '#f39c12' }}>
-          ⚠️ Displaying mock data. Set GOOGLE_APPLICATION_CREDENTIALS to use real data.
-        </div>
-      )}
     </GanttContainer>
   );
 };
