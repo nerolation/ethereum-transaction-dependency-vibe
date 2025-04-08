@@ -1,22 +1,17 @@
 import os
-from flask import Flask, send_from_directory, request
+from flask import Flask, send_from_directory
 
 def setup_static_serving(app):
     # Path to the static files (frontend build)
     static_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), '../frontend/build'))
     print(f"Setting up static file serving from: {static_folder}")
     
+    # Serve static files for non-API paths as a catch-all at the end
+    # This is registered last, so it only handles requests not matched by other routes
     @app.route('/', defaults={'path': ''})
     @app.route('/<path:path>')
     def serve(path):
         print(f"Received request for path: '{path}'")
-        
-        # Skip any API paths - let the API routes handle those
-        if request.path.startswith('/api/'):
-            print(f"Skipping API path: {request.path}")
-            return app.view_functions['get_status']() if request.path == '/api/status' else None
-        
-        # Serve static files for non-API paths
         if path and os.path.exists(os.path.join(static_folder, path)):
             print(f"Serving file: {os.path.join(static_folder, path)}")
             return send_from_directory(static_folder, path)

@@ -543,6 +543,9 @@ if os.environ.get('PRODUCTION', '').lower() != 'true':
         return html
 
 if __name__ == '__main__':
+    # Get port from environment variable for Heroku
+    port = int(os.environ.get('PORT', 5000))
+    
     # Check if we are in production environment (Heroku)
     if os.environ.get('PRODUCTION', '').lower() == 'true':
         print("Setting up static file serving for production...")
@@ -556,12 +559,12 @@ if __name__ == '__main__':
         if os.path.exists(build_dir):
             print(f"Found frontend build directory at: {build_dir}")
             print(f"Contents of build directory: {os.listdir(build_dir)}")
+            
+            # Setup static file serving AFTER all API routes are registered
+            # This ensures API routes take precedence
+            app = setup_static_serving(app)
+            print("Static file serving setup complete")
         else:
             print(f"ERROR: Frontend build directory not found at: {build_dir}")
-        
-        app = setup_static_serving(app)
-        print("Static file serving setup complete")
     
-    # Get port from environment variable for Heroku
-    port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False) 
