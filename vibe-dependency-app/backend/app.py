@@ -4,6 +4,41 @@ import pickle
 import time
 import json
 import tempfile
+import sys
+
+# Patch for Python 3.11+ where cgi module was removed
+# We need to create a stub module before importing google.cloud.storage
+if 'cgi' not in sys.modules:
+    import types
+    cgi_module = types.ModuleType('cgi')
+    
+    # Add the parse_header function that google.cloud.storage.blob uses
+    def parse_header(line):
+        """Return (value, params) from a Content-Type like header.
+        
+        This is a simplified version of the function from the old cgi module.
+        """
+        parts = line.split(';')
+        value = parts[0].strip()
+        params = {}
+        for part in parts[1:]:
+            if '=' not in part:
+                continue
+            key, val = part.split('=', 1)
+            key = key.strip()
+            val = val.strip()
+            if val and val[0] == val[-1] == '"':
+                val = val[1:-1]
+            params[key] = val
+        return value, params
+    
+    # Add the function to our stub module
+    cgi_module.parse_header = parse_header
+    
+    # Register the module
+    sys.modules['cgi'] = cgi_module
+    print("Added stub 'cgi' module for Google Cloud Storage compatibility")
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from google.cloud import storage
