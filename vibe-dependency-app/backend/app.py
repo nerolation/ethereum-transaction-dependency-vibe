@@ -2,6 +2,8 @@ import os
 import base64
 import pickle
 import time
+import json
+import tempfile
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from google.cloud import storage
@@ -25,21 +27,46 @@ min_block_cache = {
 }  # Cache for min block number
 
 # Check for Google Cloud credentials
-if 'GOOGLE_APPLICATION_CREDENTIALS' not in os.environ:
-    print("WARNING: GOOGLE_APPLICATION_CREDENTIALS environment variable is not set!")
-    print("To set up credentials, run:")
-    print("export GOOGLE_APPLICATION_CREDENTIALS=/path/to/your/credentials.json")
-    print("\nRunning in demo mode with mock data...")
-    DEMO_MODE = True
-else:
+if 'GOOGLE_APPLICATION_CREDENTIALS' in os.environ:
+    # Use the credential file path
+    print(f"Using credentials from file: {os.environ['GOOGLE_APPLICATION_CREDENTIALS']}")
     try:
-        # Initialize Google Cloud Storage client
         storage_client = storage.Client()
         DEMO_MODE = False
     except Exception as e:
-        print(f"Error initializing Google Cloud Storage client: {e}")
+        print(f"Error initializing Google Cloud Storage client from file: {e}")
         print("Running in demo mode with mock data...")
         DEMO_MODE = True
+elif 'GOOGLE_APPLICATION_CREDENTIALS_JSON' in os.environ:
+    # Use the credential JSON directly from environment variable
+    print("Using credentials from environment variable")
+    try:
+        # Create a temporary file with the credentials
+        creds_json = os.environ['GOOGLE_APPLICATION_CREDENTIALS_JSON']
+        with tempfile.NamedTemporaryFile(mode='w+', suffix='.json', delete=False) as temp:
+            temp.write(creds_json)
+            temp_filename = temp.name
+        
+        # Set environment variable to point to the temp file
+        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = temp_filename
+        
+        # Initialize client
+        storage_client = storage.Client()
+        DEMO_MODE = False
+        
+        # Clean up temporary file
+        os.unlink(temp_filename)
+    except Exception as e:
+        print(f"Error initializing Google Cloud Storage client from JSON: {e}")
+        print("Running in demo mode with mock data...")
+        DEMO_MODE = True
+else:
+    print("WARNING: No Google Cloud credentials found!")
+    print("To set up credentials, either:")
+    print("1. Set GOOGLE_APPLICATION_CREDENTIALS environment variable to point to your credentials file")
+    print("2. Set GOOGLE_APPLICATION_CREDENTIALS_JSON environment variable with the JSON content")
+    print("\nRunning in demo mode with mock data...")
+    DEMO_MODE = True
 
 # GCS bucket and folder configuration
 BUCKET_NAME = "ethereum-graphs"
