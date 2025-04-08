@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
-import axios from 'axios';
+import api from '../api';
 
 const GraphContainer = styled.div`
   background-color: white;
@@ -150,7 +150,7 @@ const GraphViewer: React.FC<GraphViewerProps> = ({ blockNumber, onBack }) => {
       setError(null);
       
       try {
-        const response = await axios.get(`http://localhost:5000/api/graph/${blockNumber}`);
+        const response = await api.get(`/graph/${blockNumber}`);
         setGraphData(response.data);
       } catch (err) {
         setError('Failed to load graph. The block number may not exist or there was a server error.');

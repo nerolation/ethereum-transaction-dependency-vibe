@@ -5,6 +5,7 @@ import time
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from google.cloud import storage
+from static_server import setup_static_serving
 
 app = Flask(__name__)
 CORS(app)
@@ -316,5 +317,11 @@ def get_status():
     })
 
 if __name__ == '__main__':
-    print(f"Starting Flask server {'in DEMO MODE with mock data' if DEMO_MODE else 'with Google Cloud Storage'}")
-    app.run(debug=True, host='0.0.0.0', port=5000) 
+    # Check if we are in production environment (Heroku)
+    if os.environ.get('PRODUCTION', False):
+        # Setup static file serving in production
+        app = setup_static_serving(app)
+    
+    # Get port from environment variable for Heroku
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False) 

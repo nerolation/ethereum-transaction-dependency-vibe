@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
-import axios from 'axios';
+import api from '../api';
 
 const Container = styled.div`
   margin-bottom: 2rem;
@@ -145,7 +145,7 @@ const RecentGraphs: React.FC<RecentGraphsProps> = ({ onGraphSelect }) => {
       setError(null);
       
       try {
-        const response = await axios.get('http://localhost:5000/api/recent_graphs');
+        const response = await api.get('/recent_graphs');
         setGraphs(response.data);
         
         // Check if any of the graphs are in demo mode

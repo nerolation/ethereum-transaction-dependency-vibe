@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
-import axios from 'axios';
+import api from '../api';
 
 const GanttContainer = styled.div`
   background-color: white;
@@ -152,7 +152,7 @@ const GanttViewer: React.FC<GanttViewerProps> = ({ blockNumber, onBack }) => {
       setError(null);
       
       try {
-        const response = await axios.get(`http://localhost:5000/api/gantt/${blockNumber}`);
+        const response = await api.get(`/gantt/${blockNumber}`);
         console.log('Gantt data received:', response.data);
         setGanttData(response.data);
       } catch (err: any) {

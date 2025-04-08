@@ -1,0 +1,7 @@
+build:
+  languages:
+    - python
+    - nodejs
+
+run:
+  web: bash -c 'cd frontend && npm install && npm run build && cd ../backend && gunicorn app:app' 

@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
-import axios from 'axios';
 import GraphViewer from './components/GraphViewer';
 import GanttViewer from './components/GanttViewer';
 import GraphSearch from './components/GraphSearch';
 import RecentGraphs from './components/RecentGraphs';
 import ViewToggle, { ViewType } from './components/ViewToggle';
 import { GlobalStyle } from './styles/GlobalStyle';
+import api from './api';
 
 const AppContainer = styled.div`
   max-width: 1200px;
@@ -97,7 +97,7 @@ function App() {
     // Check backend status
     const checkStatus = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/status');
+        const response = await api.get('/status');
         setBackendStatus({
           connected: true,
           demoMode: response.data.demo_mode,

@@ -1,0 +1,20 @@
+{
+  "name": "vibe-dependency-app",
+  "version": "1.0.0",
+  "description": "Ethereum Transaction Dependency Graphs",
+  "scripts": {
+    "start": "cd backend && python app.py",
+    "build": "bash build.sh",
+    "heroku-postbuild": "bash build.sh",
+    "test": "echo \"No tests specified\""
+  },
+  "engines": {
+    "node": "16.x",
+    "npm": "8.x"
+  },
+  "cacheDirectories": [
+    "frontend/node_modules"
+  ],
+  "author": "Toni Wahrstätter",
+  "license": "MIT"
+} 
