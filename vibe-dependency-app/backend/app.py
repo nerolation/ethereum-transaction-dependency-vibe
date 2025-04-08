@@ -542,20 +542,19 @@ if os.environ.get('PRODUCTION', '').lower() != 'true':
         """
         return html
 
-if __name__ == '__main__':
-    # Get port from environment variable for Heroku
-    port = int(os.environ.get('PORT', 5000))
-    
-    # Check if we are in production environment (Heroku)
-    if os.environ.get('PRODUCTION', '').lower() == 'true':
-        print("Setting up static file serving for production...")
+# Setup static file serving for production AFTER all API routes have been registered
+# This needs to happen outside the __main__ block for Gunicorn to pick it up
+if os.environ.get('PRODUCTION', '').lower() == 'true':
+    print("Setting up static file serving for production...")
+    try:
         # Setup static file serving in production
         from static_server import setup_static_serving
         print(f"Current directory: {os.getcwd()}")
-        print(f"Static folder would be: {os.path.abspath(os.path.join(os.path.dirname(__file__), '../frontend/build'))}")
-        
+
         # Check if the build directory exists
         build_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../frontend/build'))
+        print(f"Static folder would be: {build_dir}")
+        
         if os.path.exists(build_dir):
             print(f"Found frontend build directory at: {build_dir}")
             print(f"Contents of build directory: {os.listdir(build_dir)}")
@@ -566,5 +565,10 @@ if __name__ == '__main__':
             print("Static file serving setup complete")
         else:
             print(f"ERROR: Frontend build directory not found at: {build_dir}")
-    
+    except Exception as e:
+        print(f"Error setting up static file serving: {e}")
+
+if __name__ == '__main__':
+    # Get port from environment variable for Heroku
+    port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False) 
