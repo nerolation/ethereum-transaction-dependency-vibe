@@ -559,6 +559,23 @@ if os.environ.get('PRODUCTION', '').lower() == 'true':
             print(f"Found frontend build directory at: {build_dir}")
             print(f"Contents of build directory: {os.listdir(build_dir)}")
             
+            # Add special case for static folder
+            static_dir = os.path.join(build_dir, 'static')
+            if os.path.exists(static_dir):
+                print(f"Static directory exists at: {static_dir}")
+                print(f"Static directory contents: {os.listdir(static_dir)}")
+                
+                # Analyze js and css folders
+                js_dir = os.path.join(static_dir, 'js')
+                if os.path.exists(js_dir):
+                    print(f"JS directory exists at: {js_dir}")
+                    print(f"JS files: {os.listdir(js_dir)}")
+                
+                css_dir = os.path.join(static_dir, 'css')
+                if os.path.exists(css_dir):
+                    print(f"CSS directory exists at: {css_dir}")
+                    print(f"CSS files: {os.listdir(css_dir)}")
+            
             # Setup static file serving AFTER all API routes are registered
             # This ensures API routes take precedence
             app = setup_static_serving(app)
@@ -567,6 +584,8 @@ if os.environ.get('PRODUCTION', '').lower() == 'true':
             print(f"ERROR: Frontend build directory not found at: {build_dir}")
     except Exception as e:
         print(f"Error setting up static file serving: {e}")
+        import traceback
+        traceback.print_exc()
 
 if __name__ == '__main__':
     # Get port from environment variable for Heroku
