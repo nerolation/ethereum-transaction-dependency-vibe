@@ -16,6 +16,40 @@ def setup_static_serving(app):
         if os.path.exists(static_dir):
             print(f"Static directory exists at: {static_dir}")
             print(f"Static directory contents: {os.listdir(static_dir)}")
+            
+            # Show JS files
+            js_dir = os.path.join(static_dir, 'js')
+            if os.path.exists(js_dir):
+                js_files = os.listdir(js_dir)
+                print(f"JS directory exists at: {js_dir}")
+                print(f"JS files: {js_files}")
+                
+                # Check for the specific JS file that's 404ing
+                main_js = [f for f in js_files if f.startswith('main') and f.endswith('.js')]
+                if main_js:
+                    print(f"Found main JS file: {main_js[0]}")
+                    main_js_path = os.path.join(js_dir, main_js[0])
+                    print(f"Main JS path: {main_js_path}")
+                    print(f"Main JS exists: {os.path.exists(main_js_path)}")
+                else:
+                    print("WARNING: Cannot find main.*.js file")
+            
+            # Show CSS files
+            css_dir = os.path.join(static_dir, 'css')
+            if os.path.exists(css_dir):
+                css_files = os.listdir(css_dir)
+                print(f"CSS directory exists at: {css_dir}")
+                print(f"CSS files: {css_files}")
+                
+                # Check for the specific CSS file that's 404ing
+                main_css = [f for f in css_files if f.startswith('main') and f.endswith('.css')]
+                if main_css:
+                    print(f"Found main CSS file: {main_css[0]}")
+                    main_css_path = os.path.join(css_dir, main_css[0])
+                    print(f"Main CSS path: {main_css_path}")
+                    print(f"Main CSS exists: {os.path.exists(main_css_path)}")
+                else:
+                    print("WARNING: Cannot find main.*.css file")
         else:
             print(f"Warning: Static directory does not exist at: {static_dir}")
     else:
@@ -26,27 +60,37 @@ def setup_static_serving(app):
     def serve_static_files(filename):
         print(f"Received request for /static/{filename}")
         static_dir = os.path.join(static_folder, 'static')
-        
-        # Check each path component
-        path_components = filename.split('/')
-        current_dir = static_dir
-        for component in path_components[:-1]:  # All except the last one (filename)
-            current_dir = os.path.join(current_dir, component)
-            if not os.path.exists(current_dir):
-                print(f"Directory {current_dir} does not exist")
-                return f"Static file not found: {filename}", 404
-        
         full_path = os.path.join(static_dir, filename)
+        
+        print(f"Checking for static file at: {full_path}")
+        print(f"File exists: {os.path.exists(full_path)}")
+        
         if os.path.exists(full_path) and os.path.isfile(full_path):
             print(f"Found static file at: {full_path}")
+            print(f"Serving file using send_file")
             return send_file(full_path)
         else:
             print(f"Static file not found at: {full_path}")
-            # Try as a direct path without the 'static' prefix
-            alt_path = os.path.join(static_folder, filename)
-            if os.path.exists(alt_path) and os.path.isfile(alt_path):
-                print(f"Found static file at alternate location: {alt_path}")
-                return send_file(alt_path)
+            
+            # Try with different combinations since the filename might have changed during build
+            if 'main.' in filename and filename.endswith('.js'):
+                js_dir = os.path.join(static_dir, 'js')
+                if os.path.exists(js_dir):
+                    js_files = [f for f in os.listdir(js_dir) if f.startswith('main') and f.endswith('.js')]
+                    if js_files:
+                        actual_js_path = os.path.join(js_dir, js_files[0])
+                        print(f"Found alternative main JS file: {actual_js_path}")
+                        return send_file(actual_js_path)
+            
+            if 'main.' in filename and filename.endswith('.css'):
+                css_dir = os.path.join(static_dir, 'css')
+                if os.path.exists(css_dir):
+                    css_files = [f for f in os.listdir(css_dir) if f.startswith('main') and f.endswith('.css')]
+                    if css_files:
+                        actual_css_path = os.path.join(css_dir, css_files[0])
+                        print(f"Found alternative main CSS file: {actual_css_path}")
+                        return send_file(actual_css_path)
+            
             return f"Static file not found: {filename}", 404
 
     # Serve root index.html

@@ -559,6 +559,13 @@ if os.environ.get('PRODUCTION', '').lower() == 'true':
             print(f"Found frontend build directory at: {build_dir}")
             print(f"Contents of build directory: {os.listdir(build_dir)}")
             
+            # Read and log index.html content to see how static files are referenced
+            index_html_path = os.path.join(build_dir, 'index.html')
+            if os.path.exists(index_html_path):
+                with open(index_html_path, 'r') as f:
+                    index_content = f.read()
+                    print(f"Index.html content:\n{'='*50}\n{index_content}\n{'='*50}")
+            
             # Add special case for static folder
             static_dir = os.path.join(build_dir, 'static')
             if os.path.exists(static_dir):
