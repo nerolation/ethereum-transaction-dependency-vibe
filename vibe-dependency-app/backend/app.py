@@ -68,11 +68,16 @@ if ('GOOGLE_CREDENTIALS_TYPE' in os.environ and
     print("Using credentials from separate environment variables")
     try:
         # Construct a credentials dictionary from individual env vars
+        private_key = os.environ.get('GOOGLE_CREDENTIALS_PRIVATE_KEY', "")
+        print(f"Private key format check: Starts with correct header: {'-----BEGIN PRIVATE KEY-----' in private_key}")
+        print(f"Private key format check: Contains newlines: {'\\n' in private_key}")
+        print(f"Private key format check: Has proper endings: {'-----END PRIVATE KEY-----' in private_key}")
+        
         credentials = {
             "type": os.environ.get('GOOGLE_CREDENTIALS_TYPE'),
             "project_id": os.environ.get('GOOGLE_CREDENTIALS_PROJECT_ID'),
             "private_key_id": os.environ.get('GOOGLE_CREDENTIALS_PRIVATE_KEY_ID', ""),
-            "private_key": os.environ.get('GOOGLE_CREDENTIALS_PRIVATE_KEY', ""),
+            "private_key": private_key,
             "client_email": os.environ.get('GOOGLE_CREDENTIALS_CLIENT_EMAIL'),
             "client_id": os.environ.get('GOOGLE_CREDENTIALS_CLIENT_ID', ""),
             "auth_uri": os.environ.get('GOOGLE_CREDENTIALS_AUTH_URI', "https://accounts.google.com/o/oauth2/auth"),
@@ -83,12 +88,15 @@ if ('GOOGLE_CREDENTIALS_TYPE' in os.environ and
         
         # Create a temporary file with the credentials
         temp = tempfile.NamedTemporaryFile(mode='w+', suffix='.json', delete=False)
-        temp.write(json.dumps(credentials, indent=2))
+        credentials_json = json.dumps(credentials, indent=2)
+        temp.write(credentials_json)
         temp.flush()
         temp_filename = temp.name
         temp.close()
         
         print(f"Created temporary credentials file: {temp_filename}")
+        # Debug - print the content of the file 
+        print(f"Credentials JSON (first 100 chars): {credentials_json[:100]}...")
         
         # Set environment variable to point to the temp file
         os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = temp_filename
