@@ -61,8 +61,60 @@ min_block_cache = {
     'timestamp': 0
 }  # Cache for min block number
 
+# Check for alternate Google Cloud credentials format (separate env vars)
+if ('GOOGLE_CREDENTIALS_TYPE' in os.environ and 
+    'GOOGLE_CREDENTIALS_PROJECT_ID' in os.environ and
+    'GOOGLE_CREDENTIALS_CLIENT_EMAIL' in os.environ):
+    print("Using credentials from separate environment variables")
+    try:
+        # Construct a credentials dictionary from individual env vars
+        credentials = {
+            "type": os.environ.get('GOOGLE_CREDENTIALS_TYPE'),
+            "project_id": os.environ.get('GOOGLE_CREDENTIALS_PROJECT_ID'),
+            "private_key_id": os.environ.get('GOOGLE_CREDENTIALS_PRIVATE_KEY_ID', ""),
+            "private_key": os.environ.get('GOOGLE_CREDENTIALS_PRIVATE_KEY', ""),
+            "client_email": os.environ.get('GOOGLE_CREDENTIALS_CLIENT_EMAIL'),
+            "client_id": os.environ.get('GOOGLE_CREDENTIALS_CLIENT_ID', ""),
+            "auth_uri": os.environ.get('GOOGLE_CREDENTIALS_AUTH_URI', "https://accounts.google.com/o/oauth2/auth"),
+            "token_uri": os.environ.get('GOOGLE_CREDENTIALS_TOKEN_URI', "https://oauth2.googleapis.com/token"),
+            "auth_provider_x509_cert_url": os.environ.get('GOOGLE_CREDENTIALS_AUTH_PROVIDER_X509_CERT_URL', "https://www.googleapis.com/oauth2/v1/certs"),
+            "client_x509_cert_url": os.environ.get('GOOGLE_CREDENTIALS_CLIENT_X509_CERT_URL', "")
+        }
+        
+        # Create a temporary file with the credentials
+        temp = tempfile.NamedTemporaryFile(mode='w+', suffix='.json', delete=False)
+        temp.write(json.dumps(credentials, indent=2))
+        temp.flush()
+        temp_filename = temp.name
+        temp.close()
+        
+        print(f"Created temporary credentials file: {temp_filename}")
+        
+        # Set environment variable to point to the temp file
+        os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = temp_filename
+        
+        # Initialize client
+        storage_client = storage.Client()
+        print("Successfully initialized Google Cloud Storage client from separate env vars")
+        DEMO_MODE = False
+        
+        # Cleanup function
+        import atexit
+        def cleanup_temp_file():
+            try:
+                if os.path.exists(temp_filename):
+                    os.unlink(temp_filename)
+                    print(f"Cleaned up temporary credentials file: {temp_filename}")
+            except Exception as e:
+                print(f"Error cleaning up temporary file: {e}")
+        atexit.register(cleanup_temp_file)
+        
+    except Exception as e:
+        print(f"Error initializing Google Cloud Storage client from separate env vars: {e}")
+        print("Running in demo mode with mock data...")
+        DEMO_MODE = True
 # Check for Google Cloud credentials
-if 'GOOGLE_APPLICATION_CREDENTIALS' in os.environ:
+elif 'GOOGLE_APPLICATION_CREDENTIALS' in os.environ:
     # Use the credential file path
     print(f"Using credentials from file: {os.environ['GOOGLE_APPLICATION_CREDENTIALS']}")
     try:
@@ -139,6 +191,7 @@ else:
     print("To set up credentials, either:")
     print("1. Set GOOGLE_APPLICATION_CREDENTIALS environment variable to point to your credentials file")
     print("2. Set GOOGLE_APPLICATION_CREDENTIALS_JSON environment variable with the JSON content")
+    print("3. Set individual GOOGLE_CREDENTIALS_* environment variables")
     print("\nRunning in demo mode with mock data...")
     DEMO_MODE = True
 
