@@ -69,9 +69,16 @@ if ('GOOGLE_CREDENTIALS_TYPE' in os.environ and
     try:
         # Construct a credentials dictionary from individual env vars
         private_key = os.environ.get('GOOGLE_CREDENTIALS_PRIVATE_KEY', "")
+        
+        # Fix private key format - Heroku sets environment variables with literal '\n' instead of newlines
+        if '\\n' in private_key and '\n' not in private_key:
+            print("Converting literal \\n in private key to actual newlines")
+            private_key = private_key.replace('\\n', '\n')
+        
         print(f"Private key format check: Starts with correct header: {'-----BEGIN PRIVATE KEY-----' in private_key}")
         print(f"Private key format check: Contains newlines: {'\\n' in private_key}")
         print(f"Private key format check: Has proper endings: {'-----END PRIVATE KEY-----' in private_key}")
+        print(f"Private key snippet (first 50 chars): {private_key[:50]}")
         
         credentials = {
             "type": os.environ.get('GOOGLE_CREDENTIALS_TYPE'),
