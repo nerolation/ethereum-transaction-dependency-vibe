@@ -5,6 +5,22 @@ import time
 import json
 import tempfile
 import sys
+import traceback
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger('dependency-app')
+
+# Log startup info
+logger.info("Starting dependency.pics backend...")
+logger.info(f"Python version: {sys.version}")
 
 # Patch for Python 3.11+ where cgi module was removed
 # We need to create a stub module before importing google.cloud.storage
@@ -37,14 +53,29 @@ if 'cgi' not in sys.modules:
     
     # Register the module
     sys.modules['cgi'] = cgi_module
-    print("Added stub 'cgi' module for Google Cloud Storage compatibility")
+    logger.info("Added stub 'cgi' module for Google Cloud Storage compatibility")
 
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-from google.cloud import storage
+try:
+    from flask import Flask, request, jsonify, send_from_directory
+    from flask_cors import CORS
+    logger.info("Successfully imported Flask dependencies")
+except ImportError as e:
+    logger.error(f"Failed to import Flask dependencies: {e}")
+    logger.error("Please run: pip install flask flask-cors")
+    sys.exit(1)
+
+try:
+    from google.cloud import storage
+    logger.info("Successfully imported Google Cloud Storage client")
+except ImportError as e:
+    logger.error(f"Failed to import Google Cloud Storage: {e}")
+    logger.error("Please run: pip install google-cloud-storage")
+    sys.exit(1)
 
 app = Flask(__name__)
-CORS(app)
+# Configure CORS to allow requests from localhost for development
+CORS(app, resources={r"/api/*": {"origins": ["http://localhost:3000", "https://dependency.pics", "*"]}})
+logger.info("Configured CORS for API routes")
 
 # Cache settings
 CACHE_TIMEOUT = 300  # Cache timeout in seconds (5 minutes)
@@ -59,6 +90,18 @@ min_block_cache = {
     'data': None,
     'timestamp': 0
 }  # Cache for min block number
+
+# Log environment variables (without sensitive data)
+logger.info(f"Number of environment variables: {len(os.environ)}")
+if 'GOOGLE_APPLICATION_CREDENTIALS' in os.environ:
+    creds_path = os.environ['GOOGLE_APPLICATION_CREDENTIALS']
+    logger.info(f"GOOGLE_APPLICATION_CREDENTIALS is set to: {creds_path}")
+    if os.path.exists(creds_path):
+        logger.info(f"Credentials file exists at {creds_path}")
+    else:
+        logger.warning(f"Credentials file does not exist at {creds_path}")
+else:
+    logger.warning("GOOGLE_APPLICATION_CREDENTIALS environment variable is not set")
 
 # Check for alternate Google Cloud credentials format (separate env vars)
 if ('GOOGLE_CREDENTIALS_TYPE' in os.environ and 
@@ -484,6 +527,27 @@ def get_status():
         "min_block_number": min_block
     })
 
+@app.errorhandler(404)
+def not_found(e):
+    logger.warning(f"404 Not Found: {request.path}")
+    return jsonify({"error": "Resource not found"}), 404
+
+@app.errorhandler(500)
+def server_error(e):
+    logger.error(f"500 Internal Server Error: {str(e)}")
+    logger.error(traceback.format_exc())
+    return jsonify({"error": "Internal server error"}), 500
+
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    """Simple health check endpoint to verify the backend is running."""
+    return jsonify({
+        "status": "ok",
+        "timestamp": time.time(),
+        "demo_mode": DEMO_MODE,
+        "api_version": "1.0.0"
+    })
+
 # Only enable this route if we're not using static file serving (which would handle the root route)
 # This will be replaced by the frontend when we build and deploy it
 if os.environ.get('PRODUCTION', '').lower() != 'true':
@@ -591,10 +655,20 @@ if os.environ.get('PRODUCTION', '').lower() == 'true':
             print(f"ERROR: Frontend build directory not found at: {build_dir}")
     except Exception as e:
         print(f"Error setting up static file serving: {e}")
-        import traceback
         traceback.print_exc()
 
 if __name__ == '__main__':
     # Get port from environment variable for Heroku
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False) 
+    logger.info(f"Starting the server on port {port}...")
+    
+    # Log some startup information
+    logger.info(f"Running in {'demo' if DEMO_MODE else 'production'} mode")
+    logger.info(f"CORS configured for: {app.config.get('CORS_ORIGINS', ['*'])}")
+    
+    try:
+        app.run(host='0.0.0.0', port=port, debug=False)
+    except Exception as e:
+        logger.error(f"Error starting the server: {e}")
+        logger.error(traceback.format_exc())
+        sys.exit(1) 

@@ -7,9 +7,15 @@ const SearchContainer = styled.div`
 
 const SearchForm = styled.form`
   display: flex;
+  flex-direction: column;
   gap: 1rem;
   max-width: 600px;
   margin: 0 auto;
+`;
+
+const InputGroup = styled.div`
+  display: flex;
+  gap: 1rem;
 `;
 
 const SearchInput = styled.input`
@@ -43,6 +49,18 @@ const SearchButton = styled.button`
     outline: none;
     box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.3);
   }
+  
+  &:disabled {
+    background-color: #95a5a6;
+    cursor: not-allowed;
+  }
+`;
+
+const ErrorMessage = styled.div`
+  color: #e74c3c;
+  font-size: 0.9rem;
+  text-align: center;
+  margin-top: 0.5rem;
 `;
 
 interface GraphSearchProps {
@@ -51,24 +69,54 @@ interface GraphSearchProps {
 
 const GraphSearch: React.FC<GraphSearchProps> = ({ onSearch }) => {
   const [blockNumber, setBlockNumber] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const validateBlockNumber = (value: string): boolean => {
+    // Block number should be a positive integer
+    if (!/^\d+$/.test(value)) {
+      setError('Block number must be a positive integer');
+      return false;
+    }
+    
+    setError(null);
+    return true;
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (blockNumber.trim()) {
-      onSearch(blockNumber.trim());
+    const trimmedValue = blockNumber.trim();
+    
+    if (!trimmedValue) {
+      setError('Please enter a block number');
+      return;
+    }
+    
+    if (validateBlockNumber(trimmedValue)) {
+      onSearch(trimmedValue);
     }
   };
 
   return (
     <SearchContainer>
       <SearchForm onSubmit={handleSubmit}>
-        <SearchInput 
-          type="text" 
-          placeholder="Enter Ethereum block number (e.g., 22195599)" 
-          value={blockNumber}
-          onChange={(e) => setBlockNumber(e.target.value)}
-        />
-        <SearchButton type="submit">Search</SearchButton>
+        <InputGroup>
+          <SearchInput 
+            type="text" 
+            placeholder="Enter Ethereum block number (e.g., 22195599)" 
+            value={blockNumber}
+            onChange={(e) => {
+              setBlockNumber(e.target.value);
+              if (error) validateBlockNumber(e.target.value);
+            }}
+          />
+          <SearchButton 
+            type="submit" 
+            disabled={!blockNumber.trim()}
+          >
+            Search
+          </SearchButton>
+        </InputGroup>
+        {error && <ErrorMessage>{error}</ErrorMessage>}
       </SearchForm>
     </SearchContainer>
   );
