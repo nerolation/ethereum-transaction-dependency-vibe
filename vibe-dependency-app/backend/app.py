@@ -42,7 +42,6 @@ if 'cgi' not in sys.modules:
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from google.cloud import storage
-from static_server import setup_static_serving
 
 app = Flask(__name__)
 CORS(app)
@@ -487,7 +486,7 @@ def get_status():
 
 # Only enable this route if we're not using static file serving (which would handle the root route)
 # This will be replaced by the frontend when we build and deploy it
-if os.environ.get('PRODUCTION', False) != 'true':
+if os.environ.get('PRODUCTION', '').lower() != 'true':
     @app.route('/', methods=['GET'])
     def root():
         """Serve a simple HTML page for the root route."""
@@ -545,7 +544,7 @@ if os.environ.get('PRODUCTION', False) != 'true':
 
 if __name__ == '__main__':
     # Check if we are in production environment (Heroku)
-    if os.environ.get('PRODUCTION', False):
+    if os.environ.get('PRODUCTION', '').lower() == 'true':
         print("Setting up static file serving for production...")
         # Setup static file serving in production
         app = setup_static_serving(app)
