@@ -6,6 +6,9 @@ RED='\033[0;31m'
 YELLOW='\033[0;33m'
 NC='\033[0m' # No Color
 
+# Change to the script's directory
+cd "$(dirname "$0")"
+
 # Check if GOOGLE_APPLICATION_CREDENTIALS is set
 if [ -z "$GOOGLE_APPLICATION_CREDENTIALS" ]; then
   echo -e "${YELLOW}WARNING: GOOGLE_APPLICATION_CREDENTIALS environment variable is not set.${NC}"

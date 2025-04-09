@@ -118,7 +118,7 @@ if ('GOOGLE_CREDENTIALS_TYPE' in os.environ and
             private_key = private_key.replace('\\n', '\n')
         
         print(f"Private key format check: Starts with correct header: {'-----BEGIN PRIVATE KEY-----' in private_key}")
-        print(f"Private key format check: Contains newlines: {'\\n' in private_key}")
+        print("Private key format check: Contains newlines: {}".format('\n' in private_key))
         print(f"Private key format check: Has proper endings: {'-----END PRIVATE KEY-----' in private_key}")
         print(f"Private key snippet (first 50 chars): {private_key[:50]}")
         

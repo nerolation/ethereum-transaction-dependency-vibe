@@ -48,4 +48,12 @@ Thumbs.db
 *secret*
 *password*
 *apikey*
-*api_key* 
+*api_key*
+
+# Log files
+*.log
+backend.log
+
+# Additional Google credential patterns
+*google-creds*
+*google_creds* 
