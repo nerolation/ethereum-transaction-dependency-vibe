@@ -6,6 +6,10 @@ RED='\033[0;31m'
 YELLOW='\033[0;33m'
 NC='\033[0m' # No Color
 
+# Set Google Cloud credentials
+export GOOGLE_APPLICATION_CREDENTIALS="/home/nero/python/eth-data-pipeline/key/google-creds.json"
+echo -e "${GREEN}Setting Google Cloud credentials to: $GOOGLE_APPLICATION_CREDENTIALS${NC}"
+
 # Change to the script's directory
 cd "$(dirname "$0")"
 

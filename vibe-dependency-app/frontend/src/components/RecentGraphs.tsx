@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
-import api from '../api';
+import { fetchWithCache } from '../api';
+import { graphImageCache } from './GraphViewer';
 
 const Container = styled.div`
   margin-bottom: 2rem;
@@ -110,30 +111,82 @@ interface GraphData {
   demo_mode: boolean;
 }
 
+interface GraphCardState {
+  loading: boolean;
+  imageLoaded: boolean;
+  data: GraphData | null;
+}
+
 const RecentGraphs: React.FC<RecentGraphsProps> = ({ onGraphSelect }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [graphs, setGraphs] = useState<GraphData[]>([]);
+  const [blockNumbers, setBlockNumbers] = useState<string[]>([]);
+  const [graphCards, setGraphCards] = useState<{[key: string]: GraphCardState}>({});
 
+  // First, fetch just the list of recent blocks
   useEffect(() => {
-    const fetchRecentGraphs = async () => {
+    const fetchRecentBlocks = async () => {
       setLoading(true);
       setError(null);
       
       try {
-        const response = await api.get('/recent_graphs');
-        setGraphs(response.data);
+        // Get recent graphs data with caching
+        const data = await fetchWithCache('/recent_graphs');
+        
+        // Extract block numbers and set up initial card states
+        const blocks = data.map((graph: GraphData) => graph.block_number);
+        setBlockNumbers(blocks);
+        
+        // Initialize graph cards state
+        const initialGraphCards: {[key: string]: GraphCardState} = {};
+        data.forEach((graph: GraphData) => {
+          // Pre-load images into browser cache when data is available
+          if (graph.image) {
+            graphImageCache.set(graph.block_number, graph.image);
+            
+            // Create an image object to trigger browser caching
+            const img = new Image();
+            img.src = `data:image/png;base64,${graph.image}`;
+            
+            // When image loads, mark it as loaded in our state
+            img.onload = () => {
+              setGraphCards(prev => ({
+                ...prev,
+                [graph.block_number]: { 
+                  ...prev[graph.block_number], 
+                  imageLoaded: true 
+                }
+              }));
+            };
+          }
+          
+          initialGraphCards[graph.block_number] = {
+            loading: false,
+            imageLoaded: false,
+            data: graph
+          };
+        });
+        
+        setGraphCards(initialGraphCards);
+        setLoading(false);
       } catch (err) {
         setError('Failed to load recent graphs.');
         console.error('Error fetching recent graphs:', err);
-      } finally {
         setLoading(false);
       }
     };
 
-    fetchRecentGraphs();
+    fetchRecentBlocks();
   }, []);
 
+  const handleImageLoad = (blockNumber: string) => {
+    setGraphCards(prev => ({
+      ...prev,
+      [blockNumber]: { ...prev[blockNumber], imageLoaded: true }
+    }));
+  };
+
+  // Loading state
   if (loading) {
     return (
       <Container>
@@ -146,6 +199,7 @@ const RecentGraphs: React.FC<RecentGraphsProps> = ({ onGraphSelect }) => {
     );
   }
 
+  // Error state
   if (error) {
     return (
       <Container>
@@ -155,7 +209,8 @@ const RecentGraphs: React.FC<RecentGraphsProps> = ({ onGraphSelect }) => {
     );
   }
 
-  if (graphs.length === 0) {
+  // No data state
+  if (blockNumbers.length === 0) {
     return (
       <Container>
         <SectionTitle>Recent Blocks</SectionTitle>
@@ -169,23 +224,40 @@ const RecentGraphs: React.FC<RecentGraphsProps> = ({ onGraphSelect }) => {
       <SectionTitle>Recent Blocks</SectionTitle>
       
       <GraphGrid>
-        {graphs.map((graph) => (
-          <GraphCard key={graph.block_number} onClick={() => onGraphSelect(graph.block_number)}>
+        {blockNumbers.map((blockNumber) => (
+          <GraphCard key={blockNumber} onClick={() => onGraphSelect(blockNumber)}>
             <GraphImageContainer>
-              <img 
-                src={`data:image/png;base64,${graph.image}`} 
-                alt={`Transaction Dependency Graph for Block ${graph.block_number}`} 
-              />
+              {graphCards[blockNumber]?.loading && (
+                <LoadingSpinner />
+              )}
+              
+              {graphCards[blockNumber]?.data && (
+                <>
+                  {!graphCards[blockNumber].imageLoaded && <LoadingSpinner />}
+                  <img 
+                    src={`data:image/png;base64,${graphCards[blockNumber].data?.image}`} 
+                    alt={`Transaction Dependency Graph for Block ${blockNumber}`}
+                    style={{ display: graphCards[blockNumber].imageLoaded ? 'block' : 'none' }}
+                    onLoad={() => handleImageLoad(blockNumber)}
+                    loading="lazy"
+                  />
+                </>
+              )}
+              
+              {!graphCards[blockNumber]?.loading && !graphCards[blockNumber]?.data && (
+                <div>Failed to load</div>
+              )}
             </GraphImageContainer>
+            
             <GraphInfo>
-              <GraphBlockNumber>Block #{graph.block_number}</GraphBlockNumber>
+              <GraphBlockNumber>Block #{blockNumber}</GraphBlockNumber>
               <GraphStats>
-                <span>Nodes: {graph.node_count}</span>
-                <span>Edges: {graph.edge_count}</span>
+                <span>Nodes: {graphCards[blockNumber]?.data?.node_count || '...'}</span>
+                <span>Edges: {graphCards[blockNumber]?.data?.edge_count || '...'}</span>
               </GraphStats>
               <div style={{ textAlign: 'center', marginTop: '0.5rem', fontSize: '0.85rem' }}>
                 <a 
-                  href={`https://beaconcha.in/block/${graph.block_number}`} 
+                  href={`https://beaconcha.in/block/${blockNumber}`} 
                   target="_blank" 
                   rel="noopener noreferrer"
                   style={{ color: '#3498db', textDecoration: 'none' }}

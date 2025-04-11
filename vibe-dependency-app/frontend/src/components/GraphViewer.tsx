@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
-import api from '../api';
+import api, { fetchWithCache } from '../api';
 
 const GraphContainer = styled.div`
   background-color: white;
@@ -126,6 +126,20 @@ const DemoModeTag = styled.div`
   margin-left: 1rem;
 `;
 
+// Add a new styled component for the image placeholder
+const ImagePlaceholder = styled.div`
+  width: 100%;
+  height: 450px;
+  background-color: #f5f7fa;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 8px;
+`;
+
+// Client-side cache for graph images
+export const graphImageCache = new Map<string, string>();
+
 interface GraphViewerProps {
   blockNumber: string;
   onBack?: () => void;
@@ -143,15 +157,23 @@ const GraphViewer: React.FC<GraphViewerProps> = ({ blockNumber, onBack }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [graphData, setGraphData] = useState<GraphData | null>(null);
+  const [imageLoaded, setImageLoaded] = useState(false);
 
   useEffect(() => {
     const fetchGraph = async () => {
       setLoading(true);
       setError(null);
+      setImageLoaded(false);
       
       try {
-        const response = await api.get(`/graph/${blockNumber}`);
-        setGraphData(response.data);
+        // Use the fetchWithCache helper to get data with caching
+        const data = await fetchWithCache(`/graph/${blockNumber}`);
+        setGraphData(data);
+        
+        // Cache the image data for reuse
+        if (data.image) {
+          graphImageCache.set(blockNumber, data.image);
+        }
       } catch (err) {
         setError('Failed to load graph. The block number may not exist or there was a server error.');
         console.error('Error fetching graph:', err);
@@ -226,9 +248,16 @@ const GraphViewer: React.FC<GraphViewerProps> = ({ blockNumber, onBack }) => {
       </GraphStats>
       
       <GraphImage>
+        {!imageLoaded && (
+          <ImagePlaceholder>
+            <LoadingSpinner />
+          </ImagePlaceholder>
+        )}
         <img 
-          src={`data:image/png;base64,${graphData.image}`} 
-          alt={`Transaction Dependency Graph for Block ${graphData.block_number}`} 
+          src={`data:image/png;base64,${graphData.image}`}
+          alt={`Transaction Dependency Graph for Block ${graphData.block_number}`}
+          style={{ display: imageLoaded ? 'block' : 'none' }}
+          onLoad={() => setImageLoaded(true)}
         />
       </GraphImage>
     </GraphContainer>

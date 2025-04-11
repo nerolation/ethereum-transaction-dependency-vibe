@@ -22,8 +22,12 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json'
   },
-  timeout: 10000 // 10 seconds timeout
+  timeout: 20000 // 20 seconds timeout (increased for large images)
 });
+
+// Simple client-side cache for requests
+const requestCache = new Map<string, {data: any, timestamp: number}>();
+const CACHE_TIMEOUT = 60000; // 1 minute
 
 // Request interceptor to track retry count
 api.interceptors.request.use(config => {
@@ -75,5 +79,49 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// Helper function to make a GET request with caching
+export const fetchWithCache = async (url: string, params?: any) => {
+  const cacheKey = `${url}${JSON.stringify(params || {})}`;
+  const now = Date.now();
+  
+  // Check if we have a non-expired cached request
+  if (requestCache.has(cacheKey)) {
+    const cached = requestCache.get(cacheKey)!;
+    if (now - cached.timestamp < CACHE_TIMEOUT) {
+      console.log(`Using cached request for ${url}`);
+      return cached.data;
+    } else {
+      // Expired cache entry
+      requestCache.delete(cacheKey);
+    }
+  }
+  
+  // No valid cache entry, make a new request
+  console.log(`Making new request for ${url}`);
+  const response = await api.get(url, { params });
+  
+  // Store in cache
+  requestCache.set(cacheKey, {
+    data: response.data,
+    timestamp: now
+  });
+  
+  // Clean cache periodically
+  if (requestCache.size > 100) {
+    console.log('Cleaning request cache');
+    const expireTime = now - CACHE_TIMEOUT;
+    
+    // Remove expired entries
+    Array.from(requestCache.keys()).forEach(key => {
+      const value = requestCache.get(key)!;
+      if (value.timestamp < expireTime) {
+        requestCache.delete(key);
+      }
+    });
+  }
+  
+  return response.data;
+};
 
 export default api; 

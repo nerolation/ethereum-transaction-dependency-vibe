@@ -78,7 +78,7 @@ CORS(app, resources={r"/api/*": {"origins": ["http://localhost:3000", "https://d
 logger.info("Configured CORS for API routes")
 
 # Cache settings
-CACHE_TIMEOUT = 300  # Cache timeout in seconds (5 minutes)
+CACHE_TIMEOUT = 1800  # Cache timeout in seconds (30 minutes)
 graph_cache = {}  # Cache for graph data
 stats_cache = {}  # Cache for graph stats
 gantt_cache = {}  # Cache for gantt chart data
@@ -90,6 +90,17 @@ min_block_cache = {
     'data': None,
     'timestamp': 0
 }  # Cache for min block number
+
+# Global storage client
+storage_client = None
+
+def get_storage_client():
+    """Get or create a Google Cloud Storage client instance."""
+    global storage_client
+    if storage_client is None:
+        logger.info("Initializing Google Cloud Storage client")
+        storage_client = storage.Client()
+    return storage_client
 
 # Log environment variables (without sensitive data)
 logger.info(f"Number of environment variables: {len(os.environ)}")
@@ -150,8 +161,8 @@ if ('GOOGLE_CREDENTIALS_TYPE' in os.environ and
         # Set environment variable to point to the temp file
         os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = temp_filename
         
-        # Initialize client
-        storage_client = storage.Client()
+        # Initialize client using our helper function instead of directly
+        get_storage_client()
         print("Successfully initialized Google Cloud Storage client from separate env vars")
         DEMO_MODE = False
         
@@ -175,7 +186,8 @@ elif 'GOOGLE_APPLICATION_CREDENTIALS' in os.environ:
     # Use the credential file path
     print(f"Using credentials from file: {os.environ['GOOGLE_APPLICATION_CREDENTIALS']}")
     try:
-        storage_client = storage.Client()
+        # Initialize client using our helper function instead of directly
+        get_storage_client()
         DEMO_MODE = False
     except Exception as e:
         print(f"Error initializing Google Cloud Storage client from file: {e}")
@@ -222,8 +234,8 @@ elif 'GOOGLE_APPLICATION_CREDENTIALS_JSON' in os.environ:
         # Set environment variable to point to the temp file
         os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = temp_filename
         
-        # Initialize client
-        storage_client = storage.Client()
+        # Initialize client using our helper function instead of directly
+        get_storage_client()
         print("Successfully initialized Google Cloud Storage client")
         DEMO_MODE = False
         
@@ -275,27 +287,46 @@ def get_image_from_gcs(block_number):
     
     # Check cache first
     if block_number in graph_cache and time.time() - graph_cache[block_number]['timestamp'] < CACHE_TIMEOUT:
+        logger.info(f"Serving graph {block_number} from cache")
         return graph_cache[block_number]['image']
         
-    bucket = storage_client.bucket(BUCKET_NAME)
+    logger.info(f"Fetching graph {block_number} from Google Cloud Storage")
+    bucket = get_storage_client().bucket(BUCKET_NAME)
     blob = bucket.blob(f"{IMAGES_FOLDER}/{block_number}.png")
     
     if not blob.exists():
+        logger.warning(f"Graph {block_number} not found in GCS")
         return None
     
-    # Download as bytes
-    image_data = blob.download_as_bytes()
-    
-    # Encode to base64 for frontend display
-    img_str = base64.b64encode(image_data).decode('utf-8')
-    
-    # Cache the result
-    graph_cache[block_number] = {
-        'image': img_str,
-        'timestamp': time.time()
-    }
-    
-    return img_str
+    try:
+        # Download as bytes
+        start_time = time.time()
+        image_data = blob.download_as_bytes()
+        download_time = time.time() - start_time
+        logger.info(f"Downloaded graph {block_number} from GCS in {download_time:.2f}s ({len(image_data)/1024:.1f}KB)")
+        
+        # Encode to base64 for frontend display
+        img_str = base64.b64encode(image_data).decode('utf-8')
+        
+        # Cache the result
+        graph_cache[block_number] = {
+            'image': img_str,
+            'timestamp': time.time()
+        }
+        
+        # Clean up the cache if it's getting too large (keep the 50 most recent entries)
+        if len(graph_cache) > 50:
+            logger.info(f"Cleaning up graph cache (size={len(graph_cache)})")
+            # Sort by timestamp and keep only the 50 most recent
+            sorted_cache = sorted(graph_cache.items(), key=lambda x: x[1]['timestamp'], reverse=True)
+            graph_cache.clear()
+            for k, v in sorted_cache[:50]:
+                graph_cache[k] = v
+        
+        return img_str
+    except Exception as e:
+        logger.error(f"Error downloading graph {block_number}: {e}")
+        return None
 
 def get_gantt_from_gcs(block_number):
     """Get a pre-rendered Gantt chart image from Google Cloud Storage."""
@@ -307,7 +338,7 @@ def get_gantt_from_gcs(block_number):
     if block_number in gantt_cache and time.time() - gantt_cache[block_number]['timestamp'] < CACHE_TIMEOUT:
         return gantt_cache[block_number]['image']
         
-    bucket = storage_client.bucket(BUCKET_NAME)
+    bucket = get_storage_client().bucket(BUCKET_NAME)
     blob = bucket.blob(f"chart_data_images/{block_number}.png")
     
     if not blob.exists():
@@ -341,7 +372,7 @@ def get_recent_block_numbers():
     if recent_blocks_cache['data'] and time.time() - recent_blocks_cache['timestamp'] < CACHE_TIMEOUT:
         return recent_blocks_cache['data']
         
-    bucket = storage_client.bucket(BUCKET_NAME)
+    bucket = get_storage_client().bucket(BUCKET_NAME)
     blobs = list(bucket.list_blobs(prefix=f"{IMAGES_FOLDER}/"))
     
     # Extract block numbers from filenames
@@ -383,7 +414,7 @@ def get_graph_stats(block_number):
     
     # Try to load the graph data from the pickle file
     try:
-        bucket = storage_client.bucket(BUCKET_NAME)
+        bucket = get_storage_client().bucket(BUCKET_NAME)
         blob = bucket.blob(f"graphs/{block_number}.pkl")
         
         if blob.exists():
@@ -426,7 +457,7 @@ def get_min_block_number():
     if min_block_cache['data'] and time.time() - min_block_cache['timestamp'] < CACHE_TIMEOUT:
         return min_block_cache['data']
         
-    bucket = storage_client.bucket(BUCKET_NAME)
+    bucket = get_storage_client().bucket(BUCKET_NAME)
     blobs = list(bucket.list_blobs(prefix=f"{IMAGES_FOLDER}/"))
     
     block_numbers = []
@@ -460,13 +491,17 @@ def get_graph(block_number):
     # Get graph stats
     stats = get_graph_stats(block_number)
     
-    return jsonify({
+    response = jsonify({
         "block_number": block_number,
         "image": image_data,
         "node_count": stats["node_count"],
         "edge_count": stats["edge_count"],
         "demo_mode": DEMO_MODE
     })
+    
+    # Add caching headers
+    response.headers['Cache-Control'] = f'public, max-age={CACHE_TIMEOUT}'
+    return response
 
 @app.route('/api/gantt/<block_number>', methods=['GET'])
 def get_gantt(block_number):
@@ -482,15 +517,17 @@ def get_gantt(block_number):
         stats = get_graph_stats(block_number)
         
         # Return image data and stats
-        response = {
+        response = jsonify({
             'block_number': block_number,
             'image': image_data,
             'node_count': stats['node_count'],
             'edge_count': stats['edge_count'],
             'demo_mode': DEMO_MODE
-        }
+        })
         
-        return jsonify(response)
+        # Add caching headers
+        response.headers['Cache-Control'] = f'public, max-age={CACHE_TIMEOUT}'
+        return response
     except Exception as e:
         print(f"Error in gantt API for block {block_number}: {e}")
         return jsonify({'error': f'Error retrieving Gantt chart: {str(e)}'}), 500
@@ -513,7 +550,10 @@ def get_recent_graphs():
                 "demo_mode": DEMO_MODE
             })
     
-    return jsonify(result)
+    response = jsonify(result)
+    # Add caching headers
+    response.headers['Cache-Control'] = f'public, max-age={CACHE_TIMEOUT}'
+    return response
 
 @app.route('/api/status', methods=['GET'])
 def get_status():
