@@ -6,7 +6,7 @@ import GraphSearch from './components/GraphSearch';
 import RecentGraphs from './components/RecentGraphs';
 import ViewToggle, { ViewType } from './components/ViewToggle';
 import { GlobalStyle } from './styles/GlobalStyle';
-import api from './api';
+import { getMinBlockNumber } from './api';
 
 const AppContainer = styled.div`
   max-width: 1200px;
@@ -79,15 +79,16 @@ function App() {
   });
 
   useEffect(() => {
-    // Check backend status
+    // Check backend status by loading minimum block number
     const checkStatus = async () => {
       try {
-        const response = await api.get('/status');
+        const minBlockNumber = await getMinBlockNumber();
         setBackendStatus({
           connected: true,
-          minBlockNumber: response.data.min_block_number
+          minBlockNumber
         });
       } catch (error) {
+        console.error('Error checking status:', error);
         setBackendStatus({
           connected: false
         });
@@ -95,10 +96,6 @@ function App() {
     };
 
     checkStatus();
-    
-    // Poll every 30 seconds to check connection status
-    const interval = setInterval(checkStatus, 30000);
-    return () => clearInterval(interval);
   }, []);
 
   const handleGraphSelect = (blockNumber: string) => {

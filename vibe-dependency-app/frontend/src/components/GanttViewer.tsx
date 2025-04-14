@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
-import api from '../api';
+import { getGanttData } from '../api';
 
 const GanttContainer = styled.div`
   background-color: white;
@@ -135,9 +135,7 @@ interface GanttViewerProps {
 
 interface GanttData {
   block_number: string;
-  image: string;
-  node_count: number;
-  edge_count: number;
+  image: string; // base64 encoded image
   demo_mode: boolean;
 }
 
@@ -145,22 +143,21 @@ const GanttViewer: React.FC<GanttViewerProps> = ({ blockNumber, onBack }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [ganttData, setGanttData] = useState<GanttData | null>(null);
+  const [imageLoaded, setImageLoaded] = useState(false);
 
   useEffect(() => {
     const fetchGantt = async () => {
       setLoading(true);
       setError(null);
+      setImageLoaded(false);
       
       try {
-        const response = await api.get(`/gantt/${blockNumber}`);
-        console.log('Gantt data received:', response.data);
-        setGanttData(response.data);
-      } catch (err: any) {
-        console.error('Error fetching Gantt chart:', err);
-        
-        // Get more detailed error information
-        const errorMessage = err.response?.data?.error || 'Failed to load Gantt chart. The block number may not exist or there was a server error.';
-        setError(errorMessage);
+        // Use the getGanttData function from API
+        const data = await getGanttData(blockNumber);
+        setGanttData(data);
+      } catch (err) {
+        setError('Failed to load gantt chart. The block number may not exist or there was a server error.');
+        console.error('Error fetching gantt chart:', err);
       } finally {
         setLoading(false);
       }
@@ -180,6 +177,7 @@ const GanttViewer: React.FC<GanttViewerProps> = ({ blockNumber, onBack }) => {
         <GanttImage 
           src={`data:image/png;base64,${ganttData.image}`}
           alt={`Gantt chart for block ${blockNumber}`}
+          onLoad={() => setImageLoaded(true)}
         />
       );
     } catch (error) {
@@ -192,36 +190,13 @@ const GanttViewer: React.FC<GanttViewerProps> = ({ blockNumber, onBack }) => {
     <GanttContainer>
       <GanttHeader>
         <GanttTitle>
-          Gantt Chart - Block #{ganttData?.block_number}
+          Gantt Chart - Block #{ganttData?.block_number || blockNumber}
+          {ganttData?.demo_mode && <DemoModeTag>Demo Mode</DemoModeTag>}
         </GanttTitle>
         <BackButton onClick={onBack}>
           &larr; Back to Recent Blocks
         </BackButton>
       </GanttHeader>
-      
-      <GanttStats>
-        <StatItem>
-          <StatLabel>Nodes:</StatLabel>
-          <StatValue>{ganttData?.node_count}</StatValue>
-        </StatItem>
-        <StatItem>
-          <StatLabel>Edges:</StatLabel>
-          <StatValue>{ganttData?.edge_count}</StatValue>
-        </StatItem>
-        <StatItem>
-          <StatLabel>View on:</StatLabel>
-          <StatValue>
-            <a 
-              href={`https://beaconcha.in/block/${ganttData?.block_number}`} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              style={{ color: '#3498db', textDecoration: 'none' }}
-            >
-              beaconcha.in
-            </a>
-          </StatValue>
-        </StatItem>
-      </GanttStats>
       
       <GanttChartContainer>
         {loading ? (

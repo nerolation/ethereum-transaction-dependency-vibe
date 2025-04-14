@@ -1,8 +1,8 @@
 {
-  "name": "vibe-dependency-app",
+  "name": "dependency-pics-frontend",
   "version": "0.1.0",
   "private": true,
-  "homepage": ".",
+  "homepage": "https://nerolation.github.io/dependency.pics-static",
   "proxy": "http://localhost:5000",
   "dependencies": {
     "@testing-library/dom": "^10.4.0",

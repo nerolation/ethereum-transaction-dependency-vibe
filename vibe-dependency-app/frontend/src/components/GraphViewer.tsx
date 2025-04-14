@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
-import api, { fetchWithCache } from '../api';
+import { getGraphData } from '../api';
 
 const GraphContainer = styled.div`
   background-color: white;
@@ -166,8 +166,8 @@ const GraphViewer: React.FC<GraphViewerProps> = ({ blockNumber, onBack }) => {
       setImageLoaded(false);
       
       try {
-        // Use the fetchWithCache helper to get data with caching
-        const data = await fetchWithCache(`/graph/${blockNumber}`);
+        // Use the getGraphData function from API
+        const data = await getGraphData(blockNumber);
         setGraphData(data);
         
         // Cache the image data for reuse

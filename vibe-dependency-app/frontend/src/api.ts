@@ -5,20 +5,20 @@ interface RetryAxiosRequestConfig extends AxiosRequestConfig {
   retryCount?: number;
 }
 
-// Define the base URL for API requests
-// In production, API calls are made to the same domain
-// In development, we use the local backend server
-const API_URL = process.env.NODE_ENV === 'production' 
-  ? '/api' 
-  : 'http://localhost:5000/api';
+// Define the base URL for static content
+// In development, we use the local files
+// In production, it's relative to the site root for GitHub Pages
+const STATIC_BASE_URL = process.env.NODE_ENV === 'production' 
+  ? process.env.PUBLIC_URL || '' 
+  : '';
 
-console.log(`API requests will be sent to: ${API_URL}`);
+console.log(`Static content will be loaded from: ${STATIC_BASE_URL}`);
 
 // Maximum number of retry attempts
 const MAX_RETRIES = 3;
 
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: STATIC_BASE_URL,
   headers: {
     'Content-Type': 'application/json'
   },
@@ -67,13 +67,6 @@ api.interceptors.response.use(
     // If max retries reached or not a retriable error
     if (!error.response) {
       console.error('API Connection Error:', error.message);
-      if (error.message.includes('Network Error')) {
-        console.error(
-          'Backend server may not be running. Please start the backend server at http://localhost:5000'
-        );
-      } else if (config && config.retryCount !== undefined && config.retryCount >= MAX_RETRIES) {
-        console.error(`Request failed after ${MAX_RETRIES} retry attempts`);
-      }
     }
     
     return Promise.reject(error);
@@ -122,6 +115,78 @@ export const fetchWithCache = async (url: string, params?: any) => {
   }
   
   return response.data;
+};
+
+// New functions for static content
+
+// Get graph data including stats
+export const getGraphData = async (blockNumber: string) => {
+  try {
+    // Get graph metadata from JSON file
+    const stats = await fetchWithCache(`/data/${blockNumber}.json`);
+    
+    // Load the graph image
+    const imageResponse = await api.get(`/graphs/${blockNumber}.png`, {
+      responseType: 'arraybuffer'
+    });
+    
+    // Convert image to base64
+    const base64Image = Buffer.from(imageResponse.data, 'binary').toString('base64');
+    
+    // Return combined data
+    return {
+      ...stats,
+      image: base64Image
+    };
+  } catch (error) {
+    console.error(`Error fetching graph data for block ${blockNumber}:`, error);
+    throw error;
+  }
+};
+
+// Get gantt chart data
+export const getGanttData = async (blockNumber: string) => {
+  try {
+    // Load the gantt image
+    const imageResponse = await api.get(`/gantt/${blockNumber}.png`, {
+      responseType: 'arraybuffer'
+    });
+    
+    // Convert image to base64
+    const base64Image = Buffer.from(imageResponse.data, 'binary').toString('base64');
+    
+    // Return image data
+    return {
+      block_number: blockNumber,
+      image: base64Image,
+      demo_mode: false
+    };
+  } catch (error) {
+    console.error(`Error fetching gantt data for block ${blockNumber}:`, error);
+    throw error;
+  }
+};
+
+// Get recent blocks
+export const getRecentBlocks = async () => {
+  try {
+    // Fetch recent blocks list
+    return await fetchWithCache('/data/recent_blocks.json');
+  } catch (error) {
+    console.error('Error fetching recent blocks:', error);
+    throw error;
+  }
+};
+
+// Get minimum block number
+export const getMinBlockNumber = async () => {
+  try {
+    const data = await fetchWithCache('/data/min_block.json');
+    return data.min_block_number;
+  } catch (error) {
+    console.error('Error fetching minimum block number:', error);
+    throw error;
+  }
 };
 
 export default api; 

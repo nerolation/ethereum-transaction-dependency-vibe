@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
-import { fetchWithCache } from '../api';
+import { getRecentBlocks, getGraphData } from '../api';
 import { graphImageCache } from './GraphViewer';
 
 const Container = styled.div`
@@ -130,42 +130,59 @@ const RecentGraphs: React.FC<RecentGraphsProps> = ({ onGraphSelect }) => {
       setError(null);
       
       try {
-        // Get recent graphs data with caching
-        const data = await fetchWithCache('/recent_graphs');
+        // Get recent blocks data
+        const recentBlocks = await getRecentBlocks();
         
         // Extract block numbers and set up initial card states
-        const blocks = data.map((graph: GraphData) => graph.block_number);
+        const blocks = recentBlocks.map((graph: GraphData) => graph.block_number);
         setBlockNumbers(blocks);
         
         // Initialize graph cards state
         const initialGraphCards: {[key: string]: GraphCardState} = {};
-        data.forEach((graph: GraphData) => {
-          // Pre-load images into browser cache when data is available
-          if (graph.image) {
-            graphImageCache.set(graph.block_number, graph.image);
+        
+        // For each block, initialize with the data we have
+        for (const block of recentBlocks) {
+          // Pre-fetch image data for each block
+          try {
+            // Try to fetch the graph data for this block
+            const graphData = await getGraphData(block.block_number);
             
-            // Create an image object to trigger browser caching
-            const img = new Image();
-            img.src = `data:image/png;base64,${graph.image}`;
-            
-            // When image loads, mark it as loaded in our state
-            img.onload = () => {
-              setGraphCards(prev => ({
-                ...prev,
-                [graph.block_number]: { 
-                  ...prev[graph.block_number], 
-                  imageLoaded: true 
-                }
-              }));
+            // Add image to browser cache
+            if (graphData.image) {
+              graphImageCache.set(block.block_number, graphData.image);
+              
+              // Create an image object to trigger browser caching
+              const img = new Image();
+              img.src = `data:image/png;base64,${graphData.image}`;
+              
+              // Initialize this block's card state with the data
+              initialGraphCards[block.block_number] = {
+                loading: false,
+                imageLoaded: false,  // Will be set to true on image load
+                data: graphData
+              };
+              
+              // When image loads, mark it as loaded in our state
+              img.onload = () => {
+                setGraphCards(prev => ({
+                  ...prev,
+                  [block.block_number]: { 
+                    ...prev[block.block_number], 
+                    imageLoaded: true 
+                  }
+                }));
+              };
+            }
+          } catch (err) {
+            console.error(`Error pre-fetching graph for block ${block.block_number}:`, err);
+            // Initialize with basic data, will try to load image when card is rendered
+            initialGraphCards[block.block_number] = {
+              loading: false,
+              imageLoaded: false,
+              data: block
             };
           }
-          
-          initialGraphCards[graph.block_number] = {
-            loading: false,
-            imageLoaded: false,
-            data: graph
-          };
-        });
+        }
         
         setGraphCards(initialGraphCards);
         setLoading(false);
